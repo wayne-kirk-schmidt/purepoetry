@@ -66,12 +66,24 @@ purepoetry <verb> <object> [keypath|options]
 Examples:
 
 ```bash
-purepoetry help
-purepoetry read pyproject
-purepoetry read pyproject.dependencies
-purepoetry show commands
-purepoetry show registry
-purepoetry heal invariants
+PurePoetry — governance CLI for Poetry projects
+
+Usage:
+  purepoetry <verb> <object> [keypath|options]
+
+Help topics:
+  help commands
+  help commands <command>
+  help registry
+  help registry <item>
+  help <item>
+
+Examples:
+  purepoetry help
+  purepoetry help commands
+  purepoetry help commands show
+  purepoetry help registry
+  purepoetry help registry invariants
 ```
 
 ---
