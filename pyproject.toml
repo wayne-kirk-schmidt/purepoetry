@@ -1,0 +1,45 @@
+[project]
+name = "purepoetry"
+version = "0.1.0"
+description = "Wrapper for poetry audit, validation, testing, management, and backup"
+authors = [
+    {name = "Wayne Kirk Schmidt",email = "wayne.kirk.schmidt@gmail.com"}
+]
+license = {text = "Apache"}
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "tomlkit (>=0.13.3,<0.14.0)",
+    "toml (>=0.10.2,<0.11.0)",
+    "rtoml (>=0.13.0,<0.14.0)",
+    "tomli-w (>=1.2.0,<2.0.0)",
+    "pandas (>=2.3.3,<3.0.0)"
+]
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+[tool.ruff]
+line-length = 88
+extend-exclude = ["var/archives"]
+
+[tool.poetry]
+package-mode = false
+
+[tool.ruff.lint]
+select = [
+  "E",  # pycodestyle errors
+  "F",  # pyflakes
+  "W",  # pycodestyle warnings
+  "I",  # import sorting
+  "UP", # pyupgrade
+  "B",  # bugbear strictness
+  "A",  # avoid shadowing builtins
+  "C4", # comprehension rules
+  "DTZ",# timezone safety
+  "TID",# tidy imports rules
+  "RUF" # Ruff-native rules
+]
+ignore = []
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
