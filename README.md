@@ -176,7 +176,10 @@ See:
 PurePoetry is typically run inside a Poetry-managed environment.
 
 ```bash
+
+poetry config virtualenvs.in-project true
 poetry install
+source .venv/bin/activate
 ```
 
 ---
