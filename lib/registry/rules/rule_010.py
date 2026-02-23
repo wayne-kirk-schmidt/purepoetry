@@ -11,19 +11,19 @@ DESCRIPTION = "Missing project URLs (homepage/repo/docs)"
 FIXABLE = False
 SEVERITY = Severity.WARN
 
-
 def check(ctx) -> bool:
     data = ctx.get("pyproject_data", {})
-    try:
-        poetry = data["tool"]["poetry"]
-        return (
-            "homepage" in poetry
-            or "repository" in poetry
-            or "documentation" in poetry
-        )
-    except KeyError:
+    project = data.get("project", {})
+
+    urls = project.get("urls", {})
+
+    if not isinstance(urls, dict):
         return False
 
+    return any(
+        key in urls
+        for key in ("homepage", "repository", "documentation")
+    )
 
 RULE = InvariantSpec(
     ID,

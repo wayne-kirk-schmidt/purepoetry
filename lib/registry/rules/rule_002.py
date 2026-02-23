@@ -26,29 +26,25 @@ SEVERITY = Severity.WARN
 
 def check(ctx) -> bool:
     """
-    Validate required Poetry metadata fields:
-      - tool.poetry.name
-      - tool.poetry.version
-      - tool.poetry.dependencies.python
+    Validate required PEP 621 metadata fields:
+      - project.name
+      - project.version
+      - project.requires-python
     """
 
     data = ctx.get("pyproject_data", {})
+    project = data.get("project", {})
 
-    tool = data.get("tool", {})
-    poetry = tool.get("poetry", {})
-    deps = poetry.get("dependencies", {})
-
-    if not poetry.get("name"):
+    if not project.get("name"):
         return False
 
-    if not poetry.get("version"):
+    if not project.get("version"):
         return False
 
-    if not deps.get("python"):
+    if not project.get("requires-python"):
         return False
 
     return True
-
 
 # ================================================================
 # Rule Object

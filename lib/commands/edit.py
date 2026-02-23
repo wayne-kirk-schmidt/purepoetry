@@ -2,233 +2,116 @@
 # -*- coding: utf-8 -*-
 
 """
-EDIT command for purepoetry.
+edit.py
 
-Contract:
-
-purepoetry edit
-    → delegate to show
-
-purepoetry edit <string>
-    → if exact dotted path:
-         - scalar → prompt for new value
-         - list   → enter list edit mode
-         - dict   → error (edit child key)
-      else:
-         → delegate to show <string>
-
-purepoetry edit dotted.path=value
-    → update scalar immediately
+Non-destructive TOML editor.
+Creates a modified copy in /var/tmp.
+Never mutates source file.
+Preserves formatting and comments.
 """
 
 import sys
 sys.dont_write_bytecode = True
 
 from pathlib import Path
+from datetime import datetime
+from typing import Tuple, Any
+
 import tomlkit
-from tomlkit.items import Array
-from tomlkit.toml_document import TOMLDocument
-
-# ============================================================
-# Helpers
-# ============================================================
-
-def _load_document(variables):
-    srcfile = variables.get("pyproject_path", "pyproject.toml")
-    path = Path(srcfile)
-
-    if not path.exists():
-        print(f"[fatal] pyproject.toml not found at: {path}")
-        return None, None
-
-    try:
-        with path.open("r", encoding="utf-8") as f:
-            doc = tomlkit.parse(f.read())
-        return doc, path
-    except Exception as exc:
-        print(f"[fatal] Failed to parse TOML: {exc}")
-        return None, None
 
 
-def _write_document(doc: TOMLDocument, path: Path):
+OUTPUT_DIR = Path("/var/tmp")
+
+
+def _resolve_project_root(variables: dict) -> Path:
+    project = variables.get("project")
+    if project:
+        p = Path(project).expanduser()
+        if p.is_file():
+            return p.parent.resolve()
+        return p.resolve()
+    return Path.cwd().resolve()
+
+
+def _load_toml(path: Path):
+    with path.open("r", encoding="utf-8") as f:
+        return tomlkit.parse(f.read())
+
+
+def _write_toml(doc, path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
         f.write(tomlkit.dumps(doc))
 
 
-def _collect_paths(data, prefix=""):
-    paths = []
+def _navigate_path(data, dotted: str) -> Tuple[Any, str]:
+    parts = dotted.split(".")
+    current = data
 
-    if isinstance(data, dict):
-        for key, value in data.items():
-            new_prefix = f"{prefix}.{key}" if prefix else key
-            paths.append(new_prefix)
-            paths.extend(_collect_paths(value, new_prefix))
-
-    elif isinstance(data, list):
-        # do not descend into lists for path discovery
-        pass
-
-    return paths
-
-
-def _resolve_path(doc, dotted_path):
-    parts = dotted_path.split(".")
-    current = doc
-
-    for part in parts:
-        if part in current:
-            current = current[part]
-        else:
-            return None
-
-    return current
-
-
-def _resolve_parent(doc, dotted_path):
-    parts = dotted_path.split(".")
-    parent = doc
     for part in parts[:-1]:
-        if part in parent:
-            parent = parent[part]
+        if part not in current:
+            return None, ""
+        current = current[part]
+
+    return current, parts[-1]
+
+
+def run_action(obj: str | None, value: str | None, variables: dict):
+
+    if not obj or value is None:
+        print("[error] edit requires <path> <value>")
+        return 2
+
+    project_root = _resolve_project_root(variables)
+    source_path = project_root / "pyproject.toml"
+
+    if not source_path.exists():
+        print("[error] pyproject.toml not found")
+        return 3
+
+    doc = _load_toml(source_path)
+
+    parent, key = _navigate_path(doc, obj)
+
+    if parent is None or key == "":
+        print(f"[error] path not found: {obj}")
+        return 4
+
+    old_value = parent.get(key)
+
+    if old_value == value:
+        print(f"NO CHANGE {obj}")
+        return 0
+
+    if key in parent:
+        # Preserve existing type
+        if isinstance(old_value, bool):
+            coerced = value.lower() in ("1", "true", "yes", "on")
+        elif isinstance(old_value, int):
+            coerced = int(value)
+        elif isinstance(old_value, float):
+            coerced = float(value)
         else:
-            return None, None
-    return parent, parts[-1]
+            coerced = value
 
+        parent[key] = coerced
 
-def _delegate_to_show(query, variables):
-    from lib.commands.show import run_action as show_run_action
-    show_run_action(query, None, variables)
+        print(f"UPDATED {obj}")
+        print(f"  old: {old_value}")
+        print(f"  new: {coerced}")
 
+    else:
+        # For new keys, keep as string for now (safe default)
+        parent[key] = value
+        print(f"ADDED {obj}")
+        print(f"  value: {value}")
 
-# ============================================================
-# List Edit Mode
-# ============================================================
+    timestamp = datetime.utcnow().strftime("%Y%m%d.%H%M%S")
+    output_path = OUTPUT_DIR / f"purepoetry.edit.{timestamp}.toml"
 
-def _list_edit_mode(doc, path_obj, path_str, file_path):
-    while True:
-        print(f"\nCurrent list for {path_str}:\n")
-        for i, item in enumerate(path_obj):
-            print(f"[{i}] {item}")
+    _write_toml(doc, output_path)
 
-        print("\nOptions:")
-        print("  e <index> = edit element")
-        print("  d <index> = delete element")
-        print("  a         = append new element")
-        print("  r         = replace entire list")
-        print("  q         = quit")
+    print(f"\nOutput: {output_path}")
 
-        cmd = input("Enter command: ").strip()
+    return 0
 
-        if cmd == "q":
-            return
-
-        if cmd.startswith("e "):
-            try:
-                idx = int(cmd.split()[1])
-                current_value = path_obj[idx]
-                print(f"Current value: {current_value}")
-                new_val = input("Enter new value: ")
-                path_obj[idx] = new_val
-                _write_document(doc, file_path)
-                print(f"Updated index {idx}")
-            except Exception:
-                print("[error] Invalid index")
-
-        elif cmd.startswith("d "):
-            try:
-                idx = int(cmd.split()[1])
-                del path_obj[idx]
-                _write_document(doc, file_path)
-                print(f"Deleted index {idx}")
-            except Exception:
-                print("[error] Invalid index")
-
-        elif cmd == "a":
-            new_val = input("Enter new value: ")
-            path_obj.append(new_val)
-            _write_document(doc, file_path)
-            print("Appended value")
-
-        elif cmd == "r":
-            new_val = input("Enter new list as Python list literal: ")
-            try:
-                new_list = eval(new_val)
-                if not isinstance(new_list, list):
-                    raise ValueError
-                parent, key = _resolve_parent(doc, path_str)
-                parent[key] = tomlkit.array(new_list)
-                _write_document(doc, file_path)
-                print("Replaced entire list")
-            except Exception:
-                print("[error] Invalid list syntax")
-
-        else:
-            print("[error] Invalid command")
-
-
-# ============================================================
-# run_action
-# ============================================================
-
-def run_action(obj, value, variables):
-
-    # edit → delegate to show
-    if obj is None:
-        _delegate_to_show(None, variables)
-        return
-
-    # parse assignment
-    if value is None and "=" in obj:
-        path_str, new_value = obj.split("=", 1)
-
-        doc, file_path = _load_document(variables)
-        if doc is None:
-            return
-
-        target = _resolve_path(doc, path_str)
-        if target is None:
-            _delegate_to_show(path_str, variables)
-            return
-
-        if isinstance(target, list):
-            print("[error] Cannot assign entire list via '='. Use list edit mode.")
-            return
-
-        parent, key = _resolve_parent(doc, path_str)
-        parent[key] = new_value
-        _write_document(doc, file_path)
-        print(f"Updated {path_str} to {new_value}")
-        return
-
-    # single argument mode
-    path_str = obj
-
-    doc, file_path = _load_document(variables)
-    if doc is None:
-        return
-
-    target = _resolve_path(doc, path_str)
-
-    if target is None:
-        _delegate_to_show(path_str, variables)
-        return
-
-    # scalar
-    if not isinstance(target, (dict, list)):
-        print(f"Current value for {path_str}:")
-        print(target)
-        new_val = input("Enter new value: ")
-        parent, key = _resolve_parent(doc, path_str)
-        parent[key] = new_val
-        _write_document(doc, file_path)
-        print(f"Updated {path_str}")
-        return
-
-    # list
-    if isinstance(target, list):
-        _list_edit_mode(doc, target, path_str, file_path)
-        return
-
-    # dict
-    print("[error] Cannot edit a table directly. Edit a child key.")
-    return
