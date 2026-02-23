@@ -1,84 +1,51 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-### ================================================================
-"""
-purepoetry.registry.invariants
 
-Invariant registry (v1).
+import sys
+sys.dont_write_bytecode = True
 
-This module is the single source of truth for:
-  - what can be checked (checkup)
-  - what is fixable (heal/fix)
-  - what help should explain
-
-Notes:
-  - Checks are stubs in v1. Real implementations will be introduced in
-    the doctor/heal engine layer.
-"""
-### ================================================================
-
-from __future__ import annotations
-
-from typing import Dict, Any, List, Optional
-
-from .types import InvariantSpec, Severity
+import pkgutil
+import importlib
+from typing import List, Optional
+from .types import InvariantSpec
 
 
-def _stub_check(_ctx: Dict[str, Any]) -> bool:
-    """Placeholder check function (always true)."""
-    return True
+def _discover_modules():
+    from . import rules
+    modules = []
 
+    for mod in pkgutil.iter_modules(rules.__path__):
+        modules.append(
+            importlib.import_module(f"{rules.__name__}.{mod.name}")
+        )
 
-# Clumps:
-#   env  – interpreter & virtualenv consistency (check-only)
-#   lock – lockfile & dependency graph integrity (fixable)
-#   pkg  – packaging/layout/entrypoints (mostly fixable)
-#   meta – required metadata (fixable with placeholders)
-#   sys  – platform/system constraints (check-only)
-
-INVARIANTS: List[InvariantSpec] = [
-    # ENV (check-only)
-    InvariantSpec("ENV-001", "env", "Python interpreter mismatch", False, Severity.FAIL, _stub_check),
-    InvariantSpec("ENV-002", "env", "Multiple Poetry virtualenvs bound to project", False, Severity.FAIL, _stub_check),
-    InvariantSpec("ENV-003", "env", "Python version out of declared range", False, Severity.FAIL, _stub_check),
-
-    # LOCK (fixable)
-    InvariantSpec("LOCK-001", "lock", "Lockfile missing", True, Severity.FAIL, _stub_check),
-    InvariantSpec("LOCK-002", "lock", "Lockfile drift detected (pyproject != lock)", True, Severity.FAIL, _stub_check),
-    InvariantSpec("LOCK-003", "lock", "Installed dependencies do not match lockfile", True, Severity.FAIL, _stub_check),
-    InvariantSpec("LOCK-004", "lock", "Editable install mismatch for local package", True, Severity.FAIL, _stub_check),
-
-    # PKG (mixed)
-    InvariantSpec("PKG-001", "pkg", "Declared package path missing", True, Severity.FAIL, _stub_check),
-    InvariantSpec("PKG-002", "pkg", "Missing __init__.py (package not importable)", True, Severity.FAIL, _stub_check),
-    InvariantSpec("PKG-003", "pkg", "Script entrypoint target missing", True, Severity.FAIL, _stub_check),
-    InvariantSpec("PKG-004", "pkg", "Import fails at runtime (beyond structure)", False, Severity.FAIL, _stub_check),
-
-    # META (mostly fixable)
-    InvariantSpec("META-001", "meta", "Missing required metadata (name/version/python)", True, Severity.FAIL, _stub_check),
-    InvariantSpec("META-002", "meta", "Missing author information", True, Severity.WARN, _stub_check),
-    InvariantSpec("META-003", "meta", "Missing project URLs (homepage/repo/docs)", False, Severity.WARN, _stub_check),
-
-    # SYS (check-only)
-    InvariantSpec("SYS-001", "sys", "Platform build risk detected", False, Severity.WARN, _stub_check),
-    InvariantSpec("SYS-002", "sys", "Native dependency requires system libraries/toolchain", False, Severity.WARN, _stub_check),
-]
+    return modules
 
 
 def all_invariants() -> List[InvariantSpec]:
-    return list(INVARIANTS)
+    invariants: List[InvariantSpec] = []
 
+    for module in _discover_modules():
+        if hasattr(module, "RULE"):
+            invariants.append(module.RULE)
 
-def invariants_by_clump(clump: str) -> List[InvariantSpec]:
-    return [i for i in INVARIANTS if i.clump == clump]
+    # deterministic ordering by ID
+    invariants.sort(key=lambda r: r.id)
+
+    return invariants
 
 
 def invariant_by_id(invariant_id: str) -> Optional[InvariantSpec]:
-    for inv in INVARIANTS:
+    for inv in all_invariants():
         if inv.id == invariant_id:
             return inv
     return None
 
 
+def invariants_by_clump(clump: str) -> List[InvariantSpec]:
+    return [i for i in all_invariants() if i.clump == clump]
+
+
 def clumps() -> List[str]:
-    return sorted({i.clump for i in INVARIANTS})
+    return sorted({i.clump for i in all_invariants()})
+

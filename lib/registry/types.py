@@ -38,7 +38,7 @@ class InvariantSpec:
     clump: str
     description: str
     fixable: bool
-    severity_on_fail: Severity
+    severity: Severity
     # check(ctx) -> bool; implemented in doctor engine later
     check: Callable[[Dict[str, Any]], bool]
 
