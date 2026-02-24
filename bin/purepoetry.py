@@ -3,12 +3,15 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
+# pylint: disable=import-error, wrong-import-position
+#
 
 """
 purepoetry — CLI Entrypoint (Shim)
 
 Thin execution boundary for the purepoetry control plane.
 All orchestration logic lives under lib/.
+
 """
 
 __project__	= "purepoetry"
@@ -21,10 +24,6 @@ __license_url__	= "https://www.apache.org/licenses/LICENSE-2.0"
 import sys
 from pathlib import Path
 
-# Prevent .pyc generation
-sys.dont_write_bytecode = True
-
-# Temporary path injection (remove when using Poetry entrypoints)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 if str(PROJECT_ROOT) not in sys.path:
@@ -34,4 +33,3 @@ from lib.utilities.orchestrator import run
 
 if __name__ == "__main__":
     run()
-

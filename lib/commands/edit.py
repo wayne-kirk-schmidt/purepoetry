@@ -10,20 +10,20 @@ Never mutates source file.
 Preserves formatting and comments.
 """
 
-import sys
-sys.dont_write_bytecode = True
-
 from pathlib import Path
 from datetime import datetime
 from typing import Tuple, Any
 
+import sys
 import tomlkit
 
+sys.dont_write_bytecode = True
 
 OUTPUT_DIR = Path("/var/tmp")
 
 
 def _resolve_project_root(variables: dict) -> Path:
+    """ determine the location of the project root based on input """
     project = variables.get("project")
     if project:
         p = Path(project).expanduser()
@@ -34,17 +34,20 @@ def _resolve_project_root(variables: dict) -> Path:
 
 
 def _load_toml(path: Path):
+    """ load the toml file of the project as specified """
     with path.open("r", encoding="utf-8") as f:
         return tomlkit.parse(f.read())
 
 
 def _write_toml(doc, path: Path) -> None:
+    """ write out a toml file of the project as specified """
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
         f.write(tomlkit.dumps(doc))
 
 
 def _navigate_path(data, dotted: str) -> Tuple[Any, str]:
+    """ traverse the toml file as a dotted path """
     parts = dotted.split(".")
     current = data
 
@@ -57,7 +60,7 @@ def _navigate_path(data, dotted: str) -> Tuple[Any, str]:
 
 
 def run_action(obj: str | None, value: str | None, variables: dict):
-
+    """ this is an run_action helping the file determine either run or help """
     if not obj or value is None:
         print("[error] edit requires <path> <value>")
         return 2
@@ -114,4 +117,3 @@ def run_action(obj: str | None, value: str | None, variables: dict):
     print(f"\nOutput: {output_path}")
 
     return 0
-

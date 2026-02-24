@@ -1,6 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+#
+# pylint: disable = logging-fstring-interpolation, too-many-branches, unused-import
+#
+
+"""
+show.py
+
+Implements:
+
+    purepoetry list show <dotted.path>
+    purepoetry list add <dotted.path>=<string>
+    purepoetry list remove <dotted.path>
+
+Dispatcher calls:
+    run_action(obj, value, variables)
+"""
+
 from __future__ import annotations
 
 import sys
@@ -12,6 +29,7 @@ from typing import Any, List
 import tomlkit
 from tomlkit import table, array
 
+sys.dont_write_bytecode = True
 
 logger = logging.getLogger(__name__)
 
@@ -150,4 +168,3 @@ def run_action(obj: str, value: str, variables: dict):
         out_path = _write_toml(doc)
         print(f"Output: {out_path}")
         return
-

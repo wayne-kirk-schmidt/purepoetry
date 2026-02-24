@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-### ================================================================
+
 """
 purepoetry.commands.help
 
@@ -13,17 +13,18 @@ Contract (high-level):
 
 No filesystem side effects.
 """
-### ================================================================
 
 from __future__ import annotations
-import sys
-sys.dont_write_bytecode = True
 
+import sys
 import logging
+
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 from lib.registry.invariants import clumps
+
+sys.dont_write_bytecode = True
 
 # Registry categories are conceptual groupings (not a dump).
 _REGISTRY_CATEGORIES: Tuple[str, ...] = ("types", "invariants", "fixes")
@@ -40,6 +41,7 @@ _VERB_SUMMARY: Dict[str, str] = {
 
 @dataclass(frozen=True)
 class HelpRequest:
+    """ basic definition of the HelpRequest. no methods but data structure """
     topic: Optional[str]
     subtopic: Optional[str]
 
@@ -127,6 +129,17 @@ def _topic_block_command(logger: logging.Logger, verb: str) -> None:
         logger.info("  purepoetry show rules PKG-002")
         return
 
+    if verb == "list":
+        logger.info("Purpose:")
+        logger.info("  Modify configuration values while respecting arrays.")
+        logger.info("")
+        logger.info("Usage:")
+        logger.info("  purepoetry list")
+        logger.info("  purepoetry list show <dotted.path>")
+        logger.info("  purepoetry list add <dotted.path>=<value>")
+        logger.info("  purepoetry list remove <dotted.path>")
+        return
+
     if verb == "edit":
         logger.info("Purpose:")
         logger.info("  Modify configuration values.")
@@ -199,12 +212,14 @@ def _topic_block_registry_item(logger: logging.Logger, item: str) -> None:
 
 
 def resolve_help_request(tokens: List[str]) -> HelpRequest:
+    """ determine what is required for a specific help request """
     topic = tokens[0] if len(tokens) >= 1 else None
     subtopic = tokens[1] if len(tokens) >= 2 else None
     return HelpRequest(topic=topic, subtopic=subtopic)
 
 
 def run_help(tokens: List[str], registry: Dict[str, str]) -> int:
+    """ invoke the correct help request. expect this gets delegated to correct file """
     logger = _logger()
     req = resolve_help_request(tokens)
 
@@ -250,4 +265,3 @@ def run_help(tokens: List[str], registry: Dict[str, str]) -> int:
 
     _error_block(logger, f"Unknown help topic: {topic}")
     return 2
-
