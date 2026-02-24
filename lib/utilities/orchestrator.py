@@ -18,15 +18,24 @@ def run() -> None:
 
     args = parse_arguments(variables)
 
+    # Propagate trailing positional arguments (used by list verb)
+    variables["args"] = getattr(args, "args", [])
+
     configure_logging(args.verbose)
 
     if args.verbose:
         variables["verbose"] = True
 
-    # Only propagate dst if explicitly provided
-    # (argparse sets dstfile even when defaulted,
-    # so we check raw argv for explicit flag presence)
-    if any(f in sys.argv for f in ("-d", "--dstfile", "--dst")):
+    # ---------------------------------------------------------
+    # Propagate SRC if explicitly provided
+    # ---------------------------------------------------------
+    if any(flag in sys.argv for flag in ("-s", "--srcfile", "--src")):
+        variables["src"] = args.srcfile
+
+    # ---------------------------------------------------------
+    # Propagate DST if explicitly provided
+    # ---------------------------------------------------------
+    if any(flag in sys.argv for flag in ("-d", "--dstfile", "--dst")):
         variables["dst"] = args.dstfile
 
     if args.help:

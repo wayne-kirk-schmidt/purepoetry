@@ -15,15 +15,17 @@ class CLIArgs:
     verb: str | None
     object: str | None
     value: str | None
+    args: list[str]
     srcfile: str
     dstfile: str
     verbose: bool
     help: bool
 
+
 def parse_arguments(defaults: dict) -> CLIArgs:
     """
     Grammar:
-        purepoetry <verb> <object> <value>
+        purepoetry <verb> <object> <value> [args...]
     """
 
     parser = argparse.ArgumentParser(
@@ -35,6 +37,7 @@ def parse_arguments(defaults: dict) -> CLIArgs:
     parser.add_argument("verb", nargs="?")
     parser.add_argument("object", nargs="?")
     parser.add_argument("value", nargs="?")
+    parser.add_argument("args", nargs="*")
 
     parser.add_argument("-s", "--srcfile")
     parser.add_argument("-d", "--dstfile")
@@ -50,6 +53,7 @@ def parse_arguments(defaults: dict) -> CLIArgs:
         verb=args.verb,
         object=args.object,
         value=args.value,
+        args=args.args,
         srcfile=normalize_path(srcfile),
         dstfile=normalize_path(dstfile),
         verbose=args.verbose,

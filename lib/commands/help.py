@@ -31,8 +31,9 @@ _REGISTRY_CATEGORIES: Tuple[str, ...] = ("types", "invariants", "fixes")
 # One-line descriptions for known verbs.
 _VERB_SUMMARY: Dict[str, str] = {
     "show": "Display configuration or rule domains (read-only)",
-    "edit": "Modify configuration safely",
+    "edit": "Modify keys and values in configuration safely",
     "test": "Evaluate project against invariant rules",
+    "list": "Modify lists in configuration files",
     "help": "Show help",
 }
 

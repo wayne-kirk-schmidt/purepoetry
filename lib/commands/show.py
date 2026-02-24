@@ -33,7 +33,10 @@ from pathlib import Path
 # ==========================================================
 
 def _load_pyproject(variables: dict) -> dict:
-    path = variables.get("pyproject_path", "pyproject.toml")
+    """
+    Load pyproject.toml using unified source resolution.
+    """
+    path = variables.get("src") or variables.get("default_srcfile", "pyproject.toml")
     pyproject_path = Path(path)
 
     if not pyproject_path.exists():
