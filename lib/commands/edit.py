@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+#
+# pylint: disable=import-error
+# pylint: disable=import-outside-toplevel
+# pylint: disable=broad-exception-caught
+# pylint: disable=too-many-return-statements
+# pylint: disable=too-many-locals
+#
 # -*- coding: utf-8 -*-
 
 """

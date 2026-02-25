@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+#
+# pylint: disable=import-error
+# pylint: disable=import-outside-toplevel
+# pylint: disable=broad-exception-caught
+# pylint: disable=too-many-return-statements
+# pylint: disable=too-many-locals
+#
 
 """
 show.py
@@ -191,7 +198,7 @@ def get_help():
 # ==========================================================
 
 def run_action(obj: str | None, value: str | None, variables: dict):
-
+    """ define the run action for show, as we have objects and then sub objects """
     if obj is None:
         return _error(
             "You must provide an object for 'show'. "

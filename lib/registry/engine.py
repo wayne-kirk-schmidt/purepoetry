@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-### ================================================================
+#
+# pylint: disable=import-error
+# pylint: disable=import-outside-toplevel
+# pylint: disable=broad-exception-caught
+# pylint: disable=too-many-return-statements
+# pylint: disable=too-many-locals
+#
 """
 purepoetry.registry.engine
 
@@ -14,13 +20,9 @@ Responsibilities:
   - Persist structured report to disk
   - Return structured report (no printing)
 """
-### ================================================================
-
 from __future__ import annotations
 
 import sys
-sys.dont_write_bytecode = True
-
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, List
@@ -30,12 +32,14 @@ import importlib
 import tomllib
 import json
 
+sys.dont_write_bytecode = True
 
 # ----------------------------------------------------------------
 # Context Builder
 # ----------------------------------------------------------------
 
 def build_context(project_root: Path) -> Dict[str, Any]:
+    """ set the files for the specified project we provide """
     project_root = project_root.resolve()
 
     pyproject_path = project_root / "pyproject.toml"
@@ -74,6 +78,7 @@ def build_context(project_root: Path) -> Dict[str, Any]:
 # ----------------------------------------------------------------
 
 def discover_rules() -> List[Any]:
+    """ dynamically import the rules we need to evaluate the toml files """
     from . import rules
 
     discovered = []
@@ -92,6 +97,7 @@ def discover_rules() -> List[Any]:
 # ----------------------------------------------------------------
 
 def run(project_root: Path) -> Dict[str, Any]:
+    """ start processing, running through all of the relevant rules """
     started_at = datetime.utcnow()
 
     ctx = build_context(project_root)
@@ -166,4 +172,3 @@ def run(project_root: Path) -> Dict[str, Any]:
         pass  # engine never throws on persistence failure
 
     return report
-

@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+#
+# pylint: disable=import-error
+# pylint: disable=import-outside-toplevel
+# pylint: disable=broad-exception-caught
+# pylint: disable=too-many-return-statements
+# pylint: disable=too-many-locals
+#
 ### ================================================================
 """
 purepoetry.registry.fixes
@@ -18,12 +25,16 @@ No side-effects should happen at import time.
 
 from __future__ import annotations
 
+import sys
+
 from typing import Dict, Any, List
 
 from .types import FixSpec, FixTier
 
+sys.dont_write_bytecode = True
 
 def _stub_fix(_ctx: Dict[str, Any]) -> None:
+    """ this is a stub function to provide help with unimplemented items """
     raise NotImplementedError("Fix handler not implemented yet.")
 
 

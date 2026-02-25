@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+#
+# pylint: disable=import-error
+# pylint: disable=import-outside-toplevel
+# pylint: disable=broad-exception-caught
+# pylint: disable=too-many-return-statements
+# pylint: disable=too-many-locals
+#
 
 """
 test.py
@@ -310,7 +317,7 @@ def _render_summary(report: dict, verbose: bool) -> str:
 # Entry Point
 # ==========================================================
 
-def run_action(obj: str | None, value: str | None, variables: dict):
+def run_action(obj: str | None, _value: str | None, variables: dict):
     """
     Execute the test verb.
 

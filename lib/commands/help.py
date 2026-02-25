@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+#
+# pylint: disable=import-error
+# pylint: disable=import-outside-toplevel
+# pylint: disable=broad-exception-caught
+# pylint: disable=too-many-return-statements
+# pylint: disable=too-many-locals
+#
 
 """
 help.py
@@ -183,7 +190,7 @@ def run_help(tokens: List[str], registry: Dict[str, str]) -> ExitCode:
 # Verb contract entry point
 # ==========================================================
 
-def run_action(obj: str | None, value: str | None, variables: dict):
+def run_action(obj: str | None, _value: str | None, variables: dict):
     """
     Contract-compliant entry point for the help verb.
 
