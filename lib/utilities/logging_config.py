@@ -4,9 +4,9 @@ Logging configuration utilities for purepoetry.
 """
 
 import sys
-sys.dont_write_bytecode = True
 import logging
 
+sys.dont_write_bytecode = True
 
 def configure_logging(verbose: bool = False) -> None:
     """

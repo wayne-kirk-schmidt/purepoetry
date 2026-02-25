@@ -2,9 +2,10 @@
 Path normalization utilities.
 """
 
-import sys
-sys.dont_write_bytecode = True
 import os
+import sys
+
+sys.dont_write_bytecode = True
 
 
 def normalize_path(path: str | None) -> str | None:

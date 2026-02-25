@@ -1,17 +1,24 @@
 # lib/utilities/args.py
+#
+# pylint: disable=import-error
+# pylint: disable=too-many-instance-attributes
+#
+
 """
 CLI argument parsing for purepoetry (SVO grammar).
 """
 
 import sys
-sys.dont_write_bytecode = True
 import argparse
+
 from dataclasses import dataclass
 from lib.utilities.paths import normalize_path
 
+sys.dont_write_bytecode = True
 
 @dataclass
 class CLIArgs:
+    """ Define the contract for the cli arguments we pass """
     verb: str | None
     object: str | None
     value: str | None

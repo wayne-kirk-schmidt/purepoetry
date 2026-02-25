@@ -1,18 +1,23 @@
+#
+# pylint: disable=import-error
+#
 """
 PurePoetry orchestration layer.
 """
 
+
 import sys
-sys.dont_write_bytecode = True
 
 from lib.utilities.variables import initialize_variables
 from lib.utilities.registry import initialize_registry
 from lib.utilities.dispatcher import dispatch, help_dispatch
 from lib.utilities.args import parse_arguments
-from lib.utilities.logging import configure_logging
+from lib.utilities.logging_config import configure_logging
 
+sys.dont_write_bytecode = True
 
 def run() -> None:
+    """ defines the run method we pass to other verbs """
     variables = initialize_variables()
     registry = initialize_registry()
 

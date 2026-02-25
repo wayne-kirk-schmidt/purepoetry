@@ -2,11 +2,13 @@
 Runtime variable initialization.
 """
 
-import sys
-sys.dont_write_bytecode = True
 import os
+import sys
+
+sys.dont_write_bytecode = True
 
 def initialize_variables() -> dict:
+    """ setup specific defaults and register the behavior we want """
     userhome = os.path.expanduser("~")
 
     variables = {
@@ -17,7 +19,4 @@ def initialize_variables() -> dict:
         "config_dir": os.path.join(userhome, ".purepoetry"),
     }
 
-    os.makedirs(variables["config_dir"], exist_ok=True)
-
     return variables
-

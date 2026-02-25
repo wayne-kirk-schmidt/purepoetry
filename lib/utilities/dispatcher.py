@@ -1,10 +1,14 @@
-"""
-Command dispatch engine.
-"""
-
+# lib/utilities/dispatcher.py
+#
+# pylint: disable=too-many-instance-attributes
+# pylint: disable=import-error
 # pylint: disable=broad-exception-caught
 # pylint: disable=too-many-return-statements
 # pylint: disable=import-outside-toplevel
+#
+"""
+Command dispatch engine.
+"""
 
 import sys
 import logging
