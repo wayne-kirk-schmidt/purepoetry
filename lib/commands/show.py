@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 """
 show.py
 
@@ -20,12 +23,35 @@ Dispatcher calls:
     run_action(obj, value, variables)
 """
 
-import sys
-sys.dont_write_bytecode = True
+from __future__ import annotations
 
+import sys
 import json
 import tomllib
 from pathlib import Path
+
+from lib.utilities.exitcodes import ExitCode
+
+sys.dont_write_bytecode = True
+
+
+# ==========================================================
+# Utilities
+# ==========================================================
+
+def _error(message: str):
+    return (ExitCode.INVALID_USAGE, f"[error] {message}")
+
+
+def _success(payload: str):
+    return (ExitCode.SUCCESS, payload)
+
+
+def _normalize_value(value: str | None) -> str | None:
+    if value is None:
+        return None
+    stripped = value.strip()
+    return stripped if stripped else None
 
 
 # ==========================================================
@@ -33,9 +59,6 @@ from pathlib import Path
 # ==========================================================
 
 def _load_pyproject(variables: dict) -> dict:
-    """
-    Load pyproject.toml using unified source resolution.
-    """
     path = variables.get("src") or variables.get("default_srcfile", "pyproject.toml")
     pyproject_path = Path(path)
 
@@ -66,32 +89,43 @@ def _resolve_dotted_path(data, dotted_path):
         if isinstance(current, dict) and key in current:
             current = current[key]
         else:
-            raise KeyError(f"Path not found: {dotted_path}")
+            raise KeyError(dotted_path)
 
     return current
 
 
 def _handle_config(value: str | None, variables: dict):
-    data = _load_pyproject(variables)
+    value = _normalize_value(value)
+
+    try:
+        data = _load_pyproject(variables)
+    except FileNotFoundError as exc:
+        return _error(str(exc))
+
     all_paths = sorted(_collect_dotted_paths(data))
 
     if value is None:
-        return "\n".join(all_paths)
+        return _success("\n".join(all_paths))
 
     if value in all_paths:
-        resolved = _resolve_dotted_path(data, value)
+        try:
+            resolved = _resolve_dotted_path(data, value)
+        except KeyError:
+            return _error(f"Path not found: {value}")
+
         if isinstance(resolved, (dict, list)):
-            return f"{value}\n{json.dumps(resolved, indent=2)}"
+            formatted = json.dumps(resolved, indent=2)
         else:
-            return f"{value}\n{resolved}"
+            formatted = str(resolved)
+
+        return _success(f"{value}\n{formatted}")
 
     matches = [p for p in all_paths if value in p]
 
     if matches:
-        return "\n".join(sorted(matches))
+        return _success("\n".join(sorted(matches)))
 
-    print(f"[error] Path not found: {value}")
-    return 2
+    return _error(f"Path not found: {value}")
 
 
 # ==========================================================
@@ -99,48 +133,70 @@ def _handle_config(value: str | None, variables: dict):
 # ==========================================================
 
 def _handle_rules(value: str | None):
+    value = _normalize_value(value)
+
     from lib.registry.invariants import all_invariants, invariant_by_id
 
     invariants = all_invariants()
     rule_ids = sorted(inv.id for inv in invariants)
 
-    # show rules
     if value is None:
-        return "\n".join(rule_ids)
+        return _success("\n".join(rule_ids))
 
-    # exact match
     inv = invariant_by_id(value)
     if inv is not None:
-        return (
+        formatted = (
             f"{inv.id}\n"
             f"  clump:            {inv.clump}\n"
             f"  severity_on_fail: {inv.severity_on_fail.value}\n"
             f"  fixable:          {inv.fixable}\n"
             f"  description:      {inv.description}"
         )
+        return _success(formatted)
 
-    # substring match
     matches = [rid for rid in rule_ids if value.upper() in rid]
 
     if matches:
-        return "\n".join(matches)
+        return _success("\n".join(matches))
 
-    print(f"[error] Rule not found: {value}")
-    return 2
+    return _error(f"Rule not found: {value}")
 
 
 # ==========================================================
-# ENTRY POINT
+# Help Metadata
+# ==========================================================
+
+def get_help():
+    """
+    Structured help metadata for show verb.
+    """
+    return {
+        "name": "show",
+        "summary": "Display configuration or rule metadata (read-only)",
+        "description": (
+            "Display configuration keys or rule metadata in read-only mode. "
+            "Supports dotted path resolution and substring matching."
+        ),
+        "usage": [
+            "purepoetry show config",
+            "purepoetry show config <dotted.path>",
+            "purepoetry show rules",
+            "purepoetry show rules <rule-id>",
+        ],
+    }
+
+
+# ==========================================================
+# Entry Point
 # ==========================================================
 
 def run_action(obj: str | None, value: str | None, variables: dict):
 
     if obj is None:
-        print("[error] You must provide an object for 'show'.")
-        print("Try:")
-        print("  purepoetry show config")
-        print("  purepoetry show rules")
-        return 2
+        return _error(
+            "You must provide an object for 'show'. "
+            "Try: purepoetry show config | purepoetry show rules"
+        )
 
     if obj == "config":
         return _handle_config(value, variables)
@@ -148,9 +204,7 @@ def run_action(obj: str | None, value: str | None, variables: dict):
     if obj == "rules":
         return _handle_rules(value)
 
-    print(f"[error] Unsupported object for show: {obj}")
-    print("Supported objects:")
-    print("  config")
-    print("  rules")
-    return 2
-
+    return _error(
+        f"Unsupported object for show: {obj}. "
+        "Supported objects: config, rules"
+    )

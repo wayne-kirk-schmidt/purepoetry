@@ -1,57 +1,118 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-#
-# pylint: disable = logging-fstring-interpolation, too-many-branches, unused-import
-#
-
 """
-show.py
+list.py
 
-Implements:
+List manipulation verb for PurePoetry.
+
+Supports:
 
     purepoetry list show <dotted.path>
-    purepoetry list add <dotted.path>=<string>
-    purepoetry list remove <dotted.path>
+    purepoetry list add <dotted.path> <value>
+    purepoetry list remove <dotted.path> <value>
 
-Dispatcher calls:
-    run_action(obj, value, variables)
+Behavior:
+    - Non-destructive
+    - Writes modified copy to disk
+    - Honors --dst if provided
+    - Defaults to project directory if --dst not provided
+    - Never mutates original pyproject.toml
+    - Returns (ExitCode, payload)
 """
 
 from __future__ import annotations
 
 import sys
-import logging
 from pathlib import Path
 from datetime import datetime
-from typing import Any, List
+from typing import Any, List, Tuple
 
 import tomlkit
 from tomlkit import table, array
 
+from lib.utilities.exitcodes import ExitCode
+
 sys.dont_write_bytecode = True
 
-logger = logging.getLogger(__name__)
 
+# ==========================================================
+# Path Resolution
+# ==========================================================
+
+def _resolve_project_root(variables: dict) -> Path:
+    """
+    Determine project root directory from variables.
+    """
+    project = variables.get("project")
+    if project:
+        p = Path(project).expanduser()
+        if p.is_file():
+            return p.parent.resolve()
+        return p.resolve()
+    return Path.cwd().resolve()
+
+
+def _resolve_output_path(
+    variables: dict,
+    prefix: str,
+    project_root: Path,
+) -> Path:
+    """
+    Resolve output file path.
+
+    Order:
+        1. variables["dst"] if provided
+        2. project_root with timestamped filename
+    """
+    dst_override = variables.get("dst")
+    if isinstance(dst_override, str) and dst_override.strip():
+        return Path(dst_override).expanduser()
+
+    ts = datetime.utcnow().strftime("%Y%m%d.%H%M%S")
+    return project_root / f"{prefix}.{ts}.toml"
+
+
+# ==========================================================
+# TOML Utilities
+# ==========================================================
 
 def _load_toml(src: Path):
+    """
+    Load TOML file from provided path.
+
+    Raises:
+        FileNotFoundError if file does not exist.
+    """
     if not src.exists():
         raise FileNotFoundError(f"source file not found: {src}")
     return tomlkit.parse(src.read_text(encoding="utf-8"))
 
 
-def _write_toml(doc, prefix: str = "purepoetry.list") -> Path:
-    ts = datetime.utcnow().strftime("%Y%m%d.%H%M%S")
-    out_path = Path(f"/var/tmp/{prefix}.{ts}.toml")
-    out_path.write_text(tomlkit.dumps(doc), encoding="utf-8")
-    return out_path
-
-
-def _resolve_list_path(doc, dotted_path: str):
+def _write_toml(doc, output_path: Path) -> Path:
     """
-    Walk dotted path.
-    Auto-create intermediate tables.
-    Ensure final segment is a list (create if missing).
+    Write TOML document to specified path.
+
+    Creates parent directories if needed.
+
+    Returns:
+        Path to written file.
+    """
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(tomlkit.dumps(doc), encoding="utf-8")
+    return output_path
+
+
+# ==========================================================
+# Path Resolution Helpers
+# ==========================================================
+
+def _resolve_list_path(doc, dotted_path: str) -> Tuple[Any, str]:
+    """
+    Resolve dotted path for add operations.
+
+    Auto-creates intermediate tables if missing.
+    Ensures final leaf is a list (creates if absent).
     """
     segments = dotted_path.split(".")
     if not segments:
@@ -59,7 +120,6 @@ def _resolve_list_path(doc, dotted_path: str):
 
     current = doc
 
-    # Walk intermediate segments
     for segment in segments[:-1]:
         if segment not in current:
             current[segment] = table()
@@ -79,7 +139,9 @@ def _resolve_list_path(doc, dotted_path: str):
 
 def _get_list_path(doc, dotted_path: str):
     """
-    Resolve path but require list to exist.
+    Resolve dotted path for show/remove operations.
+
+    Requires list to already exist.
     """
     segments = dotted_path.split(".")
     if not segments:
@@ -104,67 +166,118 @@ def _get_list_path(doc, dotted_path: str):
     return current[leaf]
 
 
-def run_action(obj: str, value: str, variables: dict):
+# ==========================================================
+# Entry Point
+# ==========================================================
+
+def run_action(obj: str | None, value: str | None, variables: dict):
     """
-    obj      -> subcommand (add | remove | show)
-    value    -> dotted path
-    variables["args"] -> remaining CLI args (list value)
-    variables["src"]  -> optional source file
-    variables["verbose"] -> bool
+    Dispatcher entry point for list verb.
+
+    Returns:
+        (ExitCode, payload)
     """
+
+    if not obj or not value:
+        return (
+            ExitCode.INVALID_USAGE,
+            "[error] list requires <action> <dotted.path> [value]",
+        )
 
     action = obj
     dotted_path = value
     args: List[str] = variables.get("args", [])
-    src_path = Path(variables.get("src") or "pyproject.toml")
-    verbose = bool(variables.get("verbose"))
+
+    project_root = _resolve_project_root(variables)
+    src_path = Path(variables.get("src") or project_root / "pyproject.toml")
 
     if action not in {"add", "remove", "show"}:
-        raise ValueError(f"unsupported list action: {action}")
+        return (
+            ExitCode.INVALID_USAGE,
+            f"[error] unsupported list action: {action}",
+        )
 
-    doc = _load_toml(src_path)
+    try:
+        doc = _load_toml(src_path)
+    except FileNotFoundError as exc:
+        return (ExitCode.FAILURE, f"[error] {exc}")
 
-    if action == "show":
-        target_list = _get_list_path(doc, dotted_path)
-        for item in target_list:
-            print(item)
-        return
+    try:
+        # ------------------------------------------
+        # SHOW
+        # ------------------------------------------
+        if action == "show":
+            target_list = _get_list_path(doc, dotted_path)
+            payload = "\n".join(str(item) for item in target_list)
+            return (ExitCode.SUCCESS, payload)
 
-    if not args:
-        raise ValueError("missing list value")
+        # ------------------------------------------
+        # ADD / REMOVE require value
+        # ------------------------------------------
+        if not args:
+            return (
+                ExitCode.INVALID_USAGE,
+                "[error] missing list value",
+            )
 
-    list_value = args[0]
+        list_value = args[0]
 
-    if not isinstance(list_value, str):
-        raise TypeError("only string values supported for list operations")
+        if not isinstance(list_value, str):
+            return (
+                ExitCode.INVALID_USAGE,
+                "[error] only string values supported",
+            )
 
-    if action == "add":
-        parent, leaf = _resolve_list_path(doc, dotted_path)
-        target_list = parent[leaf]
+        if action == "add":
+            parent, leaf = _resolve_list_path(doc, dotted_path)
+            target_list = parent[leaf]
 
-        if list_value in target_list:
-            if verbose:
-                logger.info("value already present (no-op)")
-        else:
-            target_list.append(list_value)
-            if verbose:
-                logger.info(f"appended '{list_value}'")
+            if list_value not in target_list:
+                target_list.append(list_value)
 
-        out_path = _write_toml(doc)
-        print(f"Output: {out_path}")
-        return
+        if action == "remove":
+            target_list = _get_list_path(doc, dotted_path)
 
-    if action == "remove":
-        target_list = _get_list_path(doc, dotted_path)
+            if list_value in target_list:
+                target_list.remove(list_value)
 
-        if list_value in target_list:
-            target_list.remove(list_value)
-            if verbose:
-                logger.info(f"removed '{list_value}'")
-        else:
-            if verbose:
-                logger.info("value not present (no-op)")
+        output_path = _resolve_output_path(
+            variables,
+            "purepoetry.list",
+            project_root,
+        )
 
-        out_path = _write_toml(doc)
-        print(f"Output: {out_path}")
-        return
+        written = _write_toml(doc, output_path)
+        return (ExitCode.SUCCESS, f"Output: {written}")
+
+    except (ValueError, KeyError, TypeError) as exc:
+        return (ExitCode.INVALID_USAGE, f"[error] {exc}")
+    except Exception as exc:
+        return (ExitCode.FAILURE, f"[error] {exc}")
+
+    return ExitCode.SUCCESS
+
+
+# ==========================================================
+# Help Metadata
+# ==========================================================
+
+def get_help():
+    """
+    Structured help metadata for list verb.
+    """
+    return {
+        "name": "list",
+        "summary": "Modify lists in configuration files",
+        "description": (
+            "Safely display, add, or remove values from list fields "
+            "in pyproject.toml. Writes changes to a new file "
+            "and never mutates the source file. Honors --dst if provided."
+        ),
+        "usage": [
+            "purepoetry list show <dotted.path>",
+            "purepoetry list add <dotted.path> <value>",
+            "purepoetry list remove <dotted.path> <value>",
+            "purepoetry list add <dotted.path> <value> --dst <output.toml>",
+        ],
+    }
