@@ -1,13 +1,21 @@
 #!/usr/bin/env python3
+#
+# pylint: disable=import-error
+# pylint: disable=broad-exception-caught
+# pylint: disable=import-outside-toplevel
+#
 # -*- coding: utf-8 -*-
+
+""" rule specific module """
 
 from __future__ import annotations
 
 import sys
-sys.dont_write_bytecode = True
 
 import subprocess
 from lib.registry.types import InvariantSpec, Severity
+
+sys.dont_write_bytecode = True
 
 ID = "LOCK-002"
 CLUMP = "lock"
@@ -15,8 +23,7 @@ DESCRIPTION = "Lockfile drift detected (pyproject != lock)"
 FIXABLE = True
 SEVERITY = Severity.FAIL
 
-
-def check(ctx) -> bool:
+def check(_ctx) -> bool:
     """
     Validates lockfile consistency using:
         poetry check --lock
@@ -26,6 +33,7 @@ def check(ctx) -> bool:
     try:
         result = subprocess.run(
             ["poetry", "check", "--lock"],
+            check=False,
             capture_output=True,
             text=True,
         )
@@ -37,7 +45,6 @@ def check(ctx) -> bool:
         # do not hard fail the audit engine.
         return True
 
-
 RULE = InvariantSpec(
     ID,
     CLUMP,
@@ -46,4 +53,3 @@ RULE = InvariantSpec(
     SEVERITY,
     check,
 )
-

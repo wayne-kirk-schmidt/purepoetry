@@ -1,23 +1,29 @@
 #!/usr/bin/env python3
+#
+# pylint: disable=import-error
+# pylint: disable=broad-exception-caught
+# pylint: disable=import-outside-toplevel
+#
 # -*- coding: utf-8 -*-
+
+""" rule specific module """
 
 from __future__ import annotations
 
 import sys
-sys.dont_write_bytecode = True
 
 from packaging.version import Version
 from packaging.specifiers import SpecifierSet
 
 from lib.registry.types import InvariantSpec, Severity
 
+sys.dont_write_bytecode = True
 
 ID = "ENV-003"
 CLUMP = "env"
 DESCRIPTION = "Python version out of declared range"
 FIXABLE = False
 SEVERITY = Severity.FAIL
-
 
 def check(ctx) -> bool:
     """
@@ -40,7 +46,6 @@ def check(ctx) -> bool:
     except Exception:
         # If spec parsing fails, do not hard-fail the project
         return True
-
 
 RULE = InvariantSpec(
     ID,

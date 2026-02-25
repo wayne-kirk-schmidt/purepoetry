@@ -1,28 +1,24 @@
 #!/usr/bin/env python3
+#
+# pylint: disable=import-error
+# pylint: disable=broad-exception-caught
+# pylint: disable=import-outside-toplevel
+#
 # -*- coding: utf-8 -*-
+
+""" rule specific module """
 
 from __future__ import annotations
 
 import sys
-sys.dont_write_bytecode = True
-
 from lib.registry.types import InvariantSpec, Severity
-
-
-# ================================================================
-# Invariant Metadata
-# ================================================================
+sys.dont_write_bytecode = True
 
 ID = "META-001"
 CLUMP = "meta"
 DESCRIPTION = "Missing required metadata (name/version/python)"
 FIXABLE = False
 SEVERITY = Severity.WARN
-
-
-# ================================================================
-# Check
-# ================================================================
 
 def check(ctx) -> bool:
     """
@@ -31,7 +27,6 @@ def check(ctx) -> bool:
       - project.version
       - project.requires-python
     """
-
     data = ctx.get("pyproject_data", {})
     project = data.get("project", {})
 
@@ -45,10 +40,6 @@ def check(ctx) -> bool:
         return False
 
     return True
-
-# ================================================================
-# Rule Object
-# ================================================================
 
 RULE = InvariantSpec(
     id=ID,

@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
+#
+# pylint: disable=import-error
+# pylint: disable=broad-exception-caught
+# pylint: disable=import-outside-toplevel
+# pylint: disable=unused-import
+# pylint: disable=line-too-long
+#
 # -*- coding: utf-8 -*-
+
+""" rule specific module """
 
 from __future__ import annotations
 
 import sys
-sys.dont_write_bytecode = True
 
 from pathlib import Path
 from typing import Dict, Tuple, Any
@@ -14,17 +22,17 @@ import importlib.metadata as importlib_metadata
 
 from lib.registry.types import InvariantSpec, Severity
 
+sys.dont_write_bytecode = True
+
 ID = "LOCK-003"
 CLUMP = "lock"
 DESCRIPTION = "Installed dependencies do not match lockfile"
 FIXABLE = True
 SEVERITY = Severity.FAIL
 
-
 def _norm_name(name: str) -> str:
-    # Normalize per common packaging conventions: case-insensitive, -/_ collapsed.
+    """ Normalize per conventions: case-insensitive, -/_ collapsed. """
     return name.strip().lower().replace("_", "-")
-
 
 def _load_lock(lock_path: Path) -> Dict[str, str]:
     """
@@ -69,7 +77,6 @@ def _load_lock(lock_path: Path) -> Dict[str, str]:
 
     return locked
 
-
 def _installed_versions() -> Dict[str, str]:
     """
     Returns {normalized_name: version} for installed distributions in the active environment.
@@ -84,7 +91,6 @@ def _installed_versions() -> Dict[str, str]:
         if isinstance(n, str) and isinstance(v, str):
             installed[_norm_name(n)] = v.strip()
     return installed
-
 
 def _compare_locked_to_installed(locked: Dict[str, str], installed: Dict[str, str]) -> Tuple[bool, int, int]:
     """
@@ -103,7 +109,6 @@ def _compare_locked_to_installed(locked: Dict[str, str], installed: Dict[str, st
 
     ok = (missing == 0 and mismatch == 0)
     return ok, missing, mismatch
-
 
 def check(ctx) -> bool:
     """
